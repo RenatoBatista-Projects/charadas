@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Caça ao Tesouro — Surpresa</title>
+  <style>
+    :root{ --bg:#faf7fb; --card:#fff; --txt:#222; --accent:#b74aa0; }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--txt);
+      display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;
+    }
+    .card{width:100%; max-width:720px; background:var(--card); border-radius:12px; padding:22px; box-shadow:0 8px 30px rgba(0,0,0,.08);}
+    h1{margin:0 0 10px; color:var(--accent)}
+    .step{border-radius:8px; padding:14px; margin:12px 0; background:#fbfbfe; box-shadow:0 6px 18px rgba(0,0,0,.03)}
+    .riddle{font-size:1.03rem; margin-bottom:10px}
+    .controls{display:flex; gap:10px; align-items:center; margin-top:8px}
+    input[type="text"]{padding:10px; border-radius:8px; border:1px solid #ddd; flex:1}
+    button{background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer}
+    button[disabled]{opacity:.5; cursor:not-allowed}
+    .msg{margin-top:10px; font-weight:600}
+    .small{font-size:0.92rem; color:#666; margin-top:8px}
+    .hint{margin-top:8px; padding:8px; background:#f0e5ef; border-radius:6px; font-size:0.9rem; display:none}
+    .final{padding:16px; border-radius:10px; background:#f7eef5}
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-labelledby="titulo">
+    <h1 id="titulo">Caça ao Tesouro — Surpresa</h1>
+    <p class="small">Resolva cada charada, encontre o número e avance para a próxima dica. Boa sorte ❤️</p>
+    <div id="container"></div>
+    <p class="small" id="progress">Etapa 0 de 4</p>
+  </div>
+
+  <audio id="soundSuccess">
+    <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
+  </audio>
+
+  <script>
+    function normalize(s){
+      let v = (s || "").toString().trim().replace(/\s+/g,'');
+      v = v.replace(/^0+/, ''); 
+      return v === "" ? "0" : v;
+    }
+
+    const etapas = [
+      { tipo:"codigo", code:"29",
+        riddle:"Onde a noite pede licença e guardamos sonhos, há um esconderijo tranquilo — é junto aos lençóis, mas protegido por madeira.",
+        hint:"Olhe dentro do box da cama onde vocês dormem."
+      },
+      { tipo:"codigo", code:"04",
+        riddle:"Onde a sala senta e as conversas se apoiam, algo discreto mora embaixo: é o reino das migalhas que caem e dos controles perdidos.",
+        hint:"Levante e olhe embaixo do sofá da sala."
+      },
+      { tipo:"codigo", code:"2018",
+        riddle:"O carro que usamos descansa na casa do prédio; seu baú guarda coisas que viajam com a gente.",
+        hint:"Confira dentro do porta-malas do carro."
+      },
+      { tipo:"instrucao",
+        riddle:"Há um brilho que dorme quando o dia se apaga: Está nos olhos do computador ‘adormecido’, esperando o despertar.",
+        hint:"Ligue o monitor ou mova o mouse para acordar a tela."
+      }
+    ];
+
+    const container = document.getElementById("container");
+    const progress = document.getElementById("progress");
+    const soundSuccess = document.getElementById("soundSuccess");
+    let idx = 0;
+
+    function renderStep(i){
+      progress.textContent = `Etapa ${i+1} de ${etapas.length}`;
+      const step = etapas[i];
+
+      // Última etapa (instrucao) com botão de dica
+      if(step.tipo === "instrucao"){
+        container.innerHTML = `
+          <div class="step final">
+            <p class="riddle">${step.riddle}</p>
+            <div class="controls">
+              <button id="hintBtn${i}" style="background:#999">Preciso de dica</button>
+            </div>
+            <div class="hint" id="hint${i}">${step.hint}</div>
+          </div>
+        `;
+        const hintBtn = document.getElementById(`hintBtn${i}`);
+        const hintBox = document.getElementById(`hint${i}`);
+        hintBtn.addEventListener("click",()=>{ hintBox.style.display="block"; });
+        return;
+      }
+
+      // Etapas com código
+      container.innerHTML = `
+        <div class="step" id="step${i}">
+          <p class="riddle">${step.riddle}</p>
+          <div class="controls">
+            <input id="input${i}" type="text" placeholder="Digite o número encontrado">
+            <button id="btn${i}">Confirmar</button>
+            <button id="hintBtn${i}" style="background:#999">Preciso de dica</button>
+          </div>
+          <div class="hint" id="hint${i}">${step.hint}</div>
+          <p class="msg" id="msg${i}"></p>
+        </div>
+      `;
+
+      const input = document.getElementById(`input${i}`);
+      const btn = document.getElementById(`btn${i}`);
+      const msg = document.getElementById(`msg${i}`);
+      const hintBtn = document.getElementById(`hintBtn${i}`);
+      const hintBox = document.getElementById(`hint${i}`);
+
+      hintBtn.addEventListener("click",()=>{ hintBox.style.display="block"; });
+
+      function check(){
+        const val = (input.value || "").trim();
+        if(!val){ msg.textContent="Digite o número encontrado."; msg.style.color="#b74aa0"; return; }
+        if(normalize(val) === normalize(step.code)){
+          msg.style.color="#1b8a4d"; msg.textContent="Correto! Avançando...";
+          soundSuccess.play();
+          btn.disabled=true; input.disabled=true; hintBtn.disabled=true;
+          setTimeout(()=>{ idx++; renderStep(idx); }, 1200);
+        } else {
+          msg.style.color="#b72a2a"; msg.textContent="Não é esse número. Tente novamente!";
+        }
+      }
+
+      btn.addEventListener("click", check);
+      input.addEventListener("keydown", e=>{ if(e.key==="Enter") check(); });
+    }
+
+    renderStep(idx);
+  </script>
+</body>
+</html>
